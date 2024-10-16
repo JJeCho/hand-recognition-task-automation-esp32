@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <AccelStepper.h>
 
 const int RED_PIN = 14;
 const int GREEN_PIN = 12;
@@ -13,21 +14,26 @@ const int LEDC_CHANNEL_BLUE = 2;
 const int LEDC_TIMER_BITS = 8;
 const int LEDC_BASE_FREQ = 5000;
 
-// Replace with your network credentials
-const char* ssid = "SSID";
-const char* password = "PASSWORD";
+const int STEPPER_IN1 = 25;
+const int STEPPER_IN2 = 26;
+const int STEPPER_IN3 = 27;
+const int STEPPER_IN4 = 33;
+
+const char* ssid = "Joey";
+const char* password = "joey1234";
 
 WebServer server(80);
+
+AccelStepper stepper(AccelStepper::FULL4WIRE, STEPPER_IN1, STEPPER_IN3, STEPPER_IN2, STEPPER_IN4);
+float stepperSpeed = 0;
 
 void setup() {
   Serial.begin(115200);
 
-  // Initialize LED PWM channels
   ledcSetup(LEDC_CHANNEL_RED, LEDC_BASE_FREQ, LEDC_TIMER_BITS);
   ledcSetup(LEDC_CHANNEL_GREEN, LEDC_BASE_FREQ, LEDC_TIMER_BITS);
   ledcSetup(LEDC_CHANNEL_BLUE, LEDC_BASE_FREQ, LEDC_TIMER_BITS);
 
-  // Attach pins to channels
   ledcAttachPin(RED_PIN, LEDC_CHANNEL_RED);
   ledcAttachPin(GREEN_PIN, LEDC_CHANNEL_GREEN);
   ledcAttachPin(BLUE_PIN, LEDC_CHANNEL_BLUE);
@@ -35,7 +41,10 @@ void setup() {
   setColor(0, 0, 0);
   Serial.println("RGB LED control ready...");
 
-  // Connect to Wi-Fi network
+  stepper.setMaxSpeed(1000.0);
+  stepper.setAcceleration(500.0);
+  stepper.setSpeed(0);  
+
   WiFi.begin(ssid, password);
   Serial.print("Connecting to Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
@@ -46,17 +55,16 @@ void setup() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
-  // Set up HTTP server routes
   server.on("/", handleRoot);
   server.onNotFound(handleNotFound);
 
-  // Start the server
   server.begin();
   Serial.println("HTTP server started");
 }
 
 void loop() {
   server.handleClient();
+  stepper.runSpeed();
 }
 
 void handleRoot() {
@@ -76,18 +84,26 @@ void handleNotFound() {
 void processCommand(String inputString) {
   inputString.trim();
   Serial.println("Received command: " + inputString);
+  bool commandRecognized = false;
 
   if (inputString == "CMD_OPEN_PALM") {
     Serial.println("Setting color: White");
     setColor(255, 255, 255);     // White
+    stepperSpeed = 200;
+    stepper.setSpeed(stepperSpeed);
+    commandRecognized = true;
   } 
   else if (inputString == "CMD_CLOSED_FIST") {
     Serial.println("Setting color: Red");
     setColor(255, 0, 0);         // Red
+    stepperSpeed = -200;
+    stepper.setSpeed(stepperSpeed);
+    commandRecognized = true;
   } 
   else if (inputString == "CMD_POINTING_INDEX") {
     Serial.println("Setting color: Green");
     setColor(0, 255, 0);         // Green
+    commandRecognized = true;
   } 
   else if (inputString == "CMD_PINCH") {
     Serial.println("Setting color: Blue");
@@ -150,13 +166,14 @@ void processCommand(String inputString) {
     setColor(0, 0, 128);         // Navy
   }
   else {
-    Serial.println("Unknown command, turning off LED...");
-    setColor(0, 0, 0);           // Turn off LEDs
+    Serial.println("Unknown command, turning off LED and stopping motor...");
+    setColor(0, 0, 0);
+    stepperSpeed = 0;
+    stepper.setSpeed(stepperSpeed);
   }
 }
 
 void setColor(int red, int green, int blue) {
-  // Invert colors if necessary (depends on your LED configuration)
   red = 255 - red;
   green = 255 - green;
   blue = 255 - blue;
