@@ -10,8 +10,8 @@ import csv
 import warnings
 import sys
 import os
-import serial
 import logging
+import requests
 
 warnings.filterwarnings("ignore", category=UserWarning)
 sys.stderr = open(os.devnull, 'w')
@@ -53,6 +53,8 @@ class HandGestureApp:
 
         self.gesture_states = {gesture: "Idle" for gesture in self.buffered_gestures}
 
+        self.esp32_ip_var = tk.StringVar()
+
         self.create_widgets()
 
         self.cap = cv2.VideoCapture(0)
@@ -77,14 +79,6 @@ class HandGestureApp:
             min_tracking_confidence=self.min_tracking_confidence.get()
         )
 
-        try:
-            self.serial_port = serial.Serial('COM3', 9600, timeout=1)
-            time.sleep(2)
-            print("Serial port opened successfully.")
-        except Exception as e:
-            messagebox.showwarning("Warning", f"Could not open serial port: {e}\nThe program will continue without ESP32 connection.")
-            self.serial_port = None
-
         self.video_loop()
 
     def create_widgets(self):
@@ -103,6 +97,10 @@ class HandGestureApp:
         tracking_slider = ttk.Scale(settings_frame, from_=0.0, to=1.0, orient=tk.HORIZONTAL,
                                     variable=self.min_tracking_confidence, command=self.update_settings)
         tracking_slider.grid(row=1, column=1)
+
+        tk.Label(settings_frame, text="ESP32 IP Address").grid(row=2, column=0)
+        self.esp32_ip_entry = tk.Entry(settings_frame, textvariable=self.esp32_ip_var)
+        self.esp32_ip_entry.grid(row=2, column=1)
 
         log_frame = tk.Frame(self.root)
         log_frame.pack()
@@ -303,8 +301,10 @@ class HandGestureApp:
                 self.gesture_states[g] = "Idle"
 
     def send_command_to_esp32(self, gesture):
-        if getattr(self, 'serial_port', None) is None:
-            return 
+        esp32_ip = self.esp32_ip_var.get()
+        if not esp32_ip:
+            print("ESP32 IP address not set.")
+            return
 
         gesture_command_map = {
             "Gesture: Open Palm": "CMD_OPEN_PALM",
@@ -333,10 +333,16 @@ class HandGestureApp:
         try:
             print(f"Sending command to ESP32: {command}")
 
-            self.serial_port.write((command + '\n').encode())
+            url = f"http://{esp32_ip}/?cmd={command}"
 
-        except serial.SerialException as e:
-            print(f"Error sending command: {e}")
+            response = requests.get(url, timeout=1)
+            if response.status_code == 200:
+                print(f"ESP32 responded: {response.text}")
+            else:
+                print(f"Failed to send command to ESP32, status code: {response.status_code}")
+
+        except requests.RequestException as e:
+            print(f"Error sending command to ESP32: {e}")
 
     def recognize_gesture(self, landmarks, hand_label):
         fingers = []
@@ -459,8 +465,6 @@ class HandGestureApp:
     def on_closing(self):
         self.running = False
         self.cap.release()
-        if getattr(self, 'serial_port', None) is not None:
-            self.serial_port.close()
         if hasattr(self, 'hands') and self.hands:
             self.hands.close()
         self.root.destroy()

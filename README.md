@@ -2,7 +2,7 @@
 # Hand Gesture Recognition System with ESP32 Control
 
 ## Overview
-While awaiting additional components for this project, I began developing a hand gesture recognition system using Python, OpenCV, MediaPipe, and an ESP32 microcontroller. The system recognizes various hand gestures captured through a webcam and performs actions based on the detected gestures. The ESP32, connected via serial communication, controls an RGB LED, with each gesture mapped to a specific color change. The project aims to explore hand gesture control, improve user interaction, and enhance automation.
+While awaiting additional components for this project, I began developing a hand gesture recognition system using Python, OpenCV, MediaPipe, and an ESP32 microcontroller. The system recognizes various hand gestures captured through a webcam and performs actions based on the detected gestures. The ESP32, connected via Wi-Fi, controls an RGB LED, with each gesture mapped to a specific color change. The project aims to explore hand gesture control, improve user interaction, and enhance automation.
 
 ## Features
 - **Hand Gesture Recognition**: The system detects hand gestures in real-time using OpenCV and MediaPipe.
@@ -29,12 +29,11 @@ While awaiting additional components for this project, I began developing a hand
 
 ## Future Improvements
 1. **Multithreading**: To improve performance and responsiveness, multithreading should be implemented.
-2. **Wi-Fi Communication**: Shift from serial communication to Wi-Fi for enhanced communication between the Python program and ESP32.
-3. **Remote Automation**: Integrate the ESP32 with servos, motors, actuators, and sensors to remotely automate tasks.
+2. **Remote Automation**: Integrate the ESP32 with servos, motors, actuators, and sensors to remotely automate tasks.
    - Collect environmental sensor data with a gesture
    - Turn appliances or lights on or off with a wave
    - Select appliances from a room using swipe, click, or pinch
-4. **Improve Data Logging**: Utilize a mongoDB database to log recognized gestures and automated tasks.
+3. **Improve Data Logging**: Utilize a mongoDB database to log recognized gestures and automated tasks.
 
 
 ## Dependencies
